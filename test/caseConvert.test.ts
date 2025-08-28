@@ -9,6 +9,9 @@ import {
   toPascal,
   objectToPascal,
   ToPascal,
+  toConstant,
+  objectToConstant,
+  ToConstant,
 } from '../src/caseConvert';
 
 describe('Property name converter', () => {
@@ -139,6 +142,70 @@ describe('Property name converter', () => {
     expect(testToPascal.AnObject.A3.B4).toEqual('b4');
     expect(testToPascal.AKebab).toEqual('k1');
   });
+
+  it('converts to CONSTANT_CASE', () => {
+    const testToConstant = objectToConstant({
+      helloWorld: 'helloWorld',
+      aNumber: 5,
+      anArray: [1, 2, 4],
+      nullObject: null,
+      undefObject: undefined,
+      anArrayOfObjects: [{ aB: 'ab', aC: 'ac' }],
+      anObject: {
+        A1: 'a_1',
+        A2: 'a_2',
+        A3: {
+          B4: 'b_4',
+        },
+      },
+    });
+
+    expect('helloWorld' in testToConstant).toStrictEqual(false);
+    expect('HELLO_WORLD' in testToConstant).toStrictEqual(true);
+    expect(testToConstant.A_NUMBER).toEqual(5);
+    expect(testToConstant.HELLO_WORLD).toEqual('helloWorld');
+    expect(testToConstant.AN_ARRAY).toEqual([1, 2, 4]);
+    expect(testToConstant.NULL_OBJECT).toBeNull();
+    expect(testToConstant.UNDEF_OBJECT).toBeUndefined();
+    expect(testToConstant.AN_ARRAY_OF_OBJECTS[0].A_B).toEqual('ab');
+    expect(testToConstant.AN_ARRAY_OF_OBJECTS[0].A_C).toEqual('ac');
+    expect(testToConstant.AN_OBJECT.A1).toEqual('a_1');
+    expect(testToConstant.AN_OBJECT.A2).toEqual('a_2');
+    expect(testToConstant.AN_OBJECT.A3.B4).toEqual('b_4');
+  });
+
+  it('converts to CONSTANT_CASE from snake_case', () => {
+    const testToConstant = objectToConstant({
+      hello_world: 'helloWorld',
+      a_number: 5,
+      an_array: [1, 2, 4],
+      null_object: null,
+      undef_object: undefined,
+      an_array_of_objects: [{ a_b: 'ab', a_c: 'ac' }],
+      an_object: {
+        a_1: 'a1',
+        a_2: 'a2',
+        a_3: {
+          b_4: 'b4',
+        },
+      },
+      ['a_kebab']: 'k1',
+    });
+
+    expect('hello_world' in testToConstant).toStrictEqual(false);
+    expect('HELLO_WORLD' in testToConstant).toStrictEqual(true);
+    expect(testToConstant.A_NUMBER).toEqual(5);
+    expect(testToConstant.HELLO_WORLD).toEqual('helloWorld');
+    expect(testToConstant.AN_ARRAY).toEqual([1, 2, 4]);
+    expect(testToConstant.NULL_OBJECT).toBeNull();
+    expect(testToConstant.UNDEF_OBJECT).toBeUndefined();
+    expect(testToConstant.AN_ARRAY_OF_OBJECTS[0].A_B).toEqual('ab');
+    expect(testToConstant.AN_ARRAY_OF_OBJECTS[0].A_C).toEqual('ac');
+    expect(testToConstant.AN_OBJECT.A_1).toEqual('a1');
+    expect(testToConstant.AN_OBJECT.A_2).toEqual('a2');
+    expect(testToConstant.AN_OBJECT.A_3.B_4).toEqual('b4');
+    expect(testToConstant.A_KEBAB).toEqual('k1');
+  });
 });
 
 describe('Regular expressions', () => {
@@ -252,6 +319,62 @@ describe('Regular expressions', () => {
     expect(toSnake('abcE25D50')).toEqual('abc_e25_d50');
     expect(toSnake('abc25D50')).toEqual('abc_25_d50');
     expect(toSnake('abc25A50')).toEqual('abc_25_a50');
+  });
+
+  it('converts to CONSTANT_CASE', () => {
+    expect(toConstant('hello_world')).toEqual('HELLO_WORLD');
+    expect(toConstant('the_quick_brown_fox_jumps_over_the_lazy_dog')).toEqual(
+      'THE_QUICK_BROWN_FOX_JUMPS_OVER_THE_LAZY_DOG',
+    );
+    expect(toConstant('abc')).toEqual('ABC');
+    expect(toConstant('a_b_c')).toEqual('A_B_C');
+    expect(toConstant('ab_c')).toEqual('AB_C');
+    expect(toConstant('a_b')).toEqual('A_B');
+    expect(toConstant('abc_d')).toEqual('ABC_D');
+    expect(toConstant('ab_cde')).toEqual('AB_CDE');
+    expect(toConstant('abc_d_e_f')).toEqual('ABC_D_E_F');
+    expect(toConstant('ab_cdef_g')).toEqual('AB_CDEF_G');
+    expect(toConstant('ab_cd_e_f_gh')).toEqual('AB_CD_E_F_GH');
+    expect(toConstant('A')).toEqual('A');
+    expect(toConstant('a1')).toEqual('A_1');
+    expect(toConstant('a_1')).toEqual('A_1');
+    expect(toConstant('a_1c_2d')).toEqual('A_1C_2D');
+    expect(toConstant('ab_1c_2_d')).toEqual('AB_1C_2_D');
+    expect(toConstant('ab_1c_2d')).toEqual('AB_1C_2D');
+    expect(toConstant('ab_25')).toEqual('AB_25');
+    expect(toConstant('abc_e25_d50')).toEqual('ABC_E_25_D_50');
+    expect(toConstant('abc_25_d50')).toEqual('ABC_25_D_50');
+    expect(toConstant('abc_25_a50')).toEqual('ABC_25_A_50');
+    expect(toConstant('a-kebab_case')).toEqual('A-KEBAB_CASE');
+  });
+
+  it('converts from camelCase to CONSTANT_CASE', () => {
+    expect(toConstant('helloWorld')).toEqual('HELLO_WORLD');
+    expect(toConstant('theQuickBrownFoxJumpsOver')).toEqual(
+      'THE_QUICK_BROWN_FOX_JUMPS_OVER',
+    );
+    expect(toConstant('Abc')).toEqual('ABC');
+    expect(toConstant('abc')).toEqual('ABC');
+    expect(toConstant('ABC')).toEqual('A_B_C');
+    expect(toConstant('abC')).toEqual('AB_C');
+    expect(toConstant('AB')).toEqual('A_B');
+    expect(toConstant('aB')).toEqual('A_B');
+    expect(toConstant('AbcD')).toEqual('ABC_D');
+    expect(toConstant('abcD')).toEqual('ABC_D');
+    expect(toConstant('abCde')).toEqual('AB_CDE');
+    expect(toConstant('abcDEF')).toEqual('ABC_D_E_F');
+    expect(toConstant('abCdefG')).toEqual('AB_CDEF_G');
+    expect(toConstant('AbCdEFGh')).toEqual('AB_CD_E_F_GH');
+    expect(toConstant('A')).toEqual('A');
+    expect(toConstant('A1')).toEqual('A1');
+    expect(toConstant('a1')).toEqual('A_1');
+    expect(toConstant('a1c2d')).toEqual('A_1C_2D');
+    expect(toConstant('ab1c2D')).toEqual('AB_1C_2_D');
+    expect(toConstant('ab1c2d')).toEqual('AB_1C_2D');
+    expect(toConstant('ab25')).toEqual('AB_25');
+    expect(toConstant('abcE25D50')).toEqual('ABC_E25_D50');
+    expect(toConstant('abc25D50')).toEqual('ABC_25_D50');
+    expect(toConstant('abc25A50')).toEqual('ABC_25_A50');
   });
 });
 
@@ -377,6 +500,57 @@ const _t34: AssertEqual<T34, 'AbcDefJklMno'> = true;
 
 type T35 = ToPascal<'abc-def_jkl-mno'>;
 const _t35: AssertEqual<T35, 'AbcDefJklMno'> = true;
+
+type TC1 = ToConstant<'hello_world'>;
+const _tc1: AssertEqual<TC1, 'HELLO_WORLD'> = true;
+type TC2 = ToConstant<'helloWorld'>;
+const _tc2: AssertEqual<TC2, 'HELLO_WORLD'> = true;
+type TC3 = ToConstant<'theQuickBrownFoxJumpsOver'>;
+const _tc3: AssertEqual<TC3, 'THE_QUICK_BROWN_FOX_JUMPS_OVER'> = true;
+type TC4 = ToConstant<'abc'>;
+const _tc4: AssertEqual<TC4, 'ABC'> = true;
+type TC5 = ToConstant<'Abc'>;
+const _tc5: AssertEqual<TC5, 'ABC'> = true;
+type TC6 = ToConstant<'ABC'>;
+const _tc6: AssertEqual<TC6, 'A_B_C'> = true;
+type TC7 = ToConstant<'abC'>;
+const _tc7: AssertEqual<TC7, 'AB_C'> = true;
+type TC8 = ToConstant<'AB'>;
+const _tc8: AssertEqual<TC8, 'A_B'> = true;
+type TC9 = ToConstant<'aB'>;
+const _tc9: AssertEqual<TC9, 'A_B'> = true;
+type TC10 = ToConstant<'AbcD'>;
+const _tc10: AssertEqual<TC10, 'ABC_D'> = true;
+type TC11 = ToConstant<'abcD'>;
+const _tc11: AssertEqual<TC11, 'ABC_D'> = true;
+type TC12 = ToConstant<'abCde'>;
+const _tc12: AssertEqual<TC12, 'AB_CDE'> = true;
+type TC13 = ToConstant<'abcDEF'>;
+const _tc13: AssertEqual<TC13, 'ABC_D_E_F'> = true;
+type TC14 = ToConstant<'abCdefG'>;
+const _tc14: AssertEqual<TC14, 'AB_CDEF_G'> = true;
+type TC15 = ToConstant<'AbCdEFGh'>;
+const _tc15: AssertEqual<TC15, 'AB_CD_E_F_GH'> = true;
+type TC16 = ToConstant<'A'>;
+const _tc16: AssertEqual<TC16, 'A'> = true;
+type TC17 = ToConstant<'A1'>;
+const _tc17: AssertEqual<TC17, 'A1'> = true;
+type TC18 = ToConstant<'a1'>;
+const _tc18: AssertEqual<TC18, 'A_1'> = true;
+type TC19 = ToConstant<'a1c2d'>;
+const _tc19: AssertEqual<TC19, 'A_1C_2D'> = true;
+type TC20 = ToConstant<'ab1c2D'>;
+const _tc20: AssertEqual<TC20, 'AB_1C_2_D'> = true;
+type TC21 = ToConstant<'ab1c2d'>;
+const _tc21: AssertEqual<TC21, 'AB_1C_2D'> = true;
+type TC22 = ToConstant<'ab25'>;
+const _tc22: AssertEqual<TC22, 'AB_25'> = true;
+type TC23 = ToConstant<'abcE25D50'>;
+const _tc23: AssertEqual<TC23, 'ABC_E25_D50'> = true;
+type TC24 = ToConstant<'abc25D50'>;
+const _tc24: AssertEqual<TC24, 'ABC_25_D50'> = true;
+type TC25 = ToConstant<'abc25A50'>;
+const _tc25: AssertEqual<TC25, 'ABC_25_A50'> = true;
 
 interface I243 {
   nullable_object: { a_prop: string } | null;

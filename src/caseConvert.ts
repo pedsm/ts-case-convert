@@ -3,7 +3,8 @@ function convertObject<
   TResult extends
     | ObjectToCamel<TInput>
     | ObjectToSnake<TInput>
-    | ObjectToPascal<TInput>,
+    | ObjectToPascal<TInput>
+    | ObjectToConstant<TInput>,
 >(obj: TInput, keyConverter: (arg: string) => string): TResult {
   if (obj === null || typeof obj === 'undefined' || typeof obj !== 'object') {
     return obj;
@@ -25,6 +26,8 @@ function convertObject<
                   ? ObjectToCamel<ArrayItem>
                   : TResult extends ObjectToPascal<TInput>
                   ? ObjectToPascal<ArrayItem>
+                  : TResult extends ObjectToConstant<TInput>
+                  ? ObjectToConstant<ArrayItem>
                   : ObjectToSnake<ArrayItem>
               >(item, keyConverter)
             : item,
@@ -38,6 +41,8 @@ function convertObject<
             ? ObjectToCamel<typeof v>
             : TResult extends ObjectToPascal<TInput>
             ? ObjectToPascal<typeof v>
+            : TResult extends ObjectToConstant<TInput>
+            ? ObjectToConstant<typeof v>
             : ObjectToSnake<typeof v>
         >(v, keyConverter)
       : (v as unknown);
@@ -105,6 +110,14 @@ export function objectToPascal<T extends object>(obj: T): ObjectToPascal<T> {
   return convertObject(obj, toPascal);
 }
 
+export function toConstant<T extends string>(term: T): ToConstant<T> {
+  return toSnake(term).toUpperCase() as ToConstant<T>;
+}
+
+export function objectToConstant<T extends object>(obj: T): ObjectToConstant<T> {
+  return convertObject(obj, toConstant);
+}
+
 export type ToCamel<S extends string | number | symbol> = S extends string
   ? S extends `${infer Head}_${infer Tail}`
     ? `${ToCamel<Uncapitalize<Head>>}${Capitalize<ToCamel<Tail>>}`
@@ -170,6 +183,83 @@ export type ObjectToPascal<T extends object | undefined | null> =
             : Array<ArrayType>
           : T[K] extends object | undefined | null
           ? ObjectToPascal<T[K]>
+          : T[K];
+      };
+
+export type ToConstant<S extends string | number | symbol> = S extends string
+  ? S extends `${infer Head}_${infer Tail}`
+    ? `${Uppercase<Head>}_${ToConstant<Tail>}`
+    : S extends `${infer Head}-${infer Tail}`
+    ? `${Uppercase<Head>}-${ToConstant<Tail>}`
+    : S extends `${infer Head}${CapitalChars}${infer Tail}` // string has a capital char somewhere
+    ? Head extends '' // there is a capital char in the first position
+      ? Tail extends ''
+        ? Uppercase<S> /*  'A' */
+        : S extends `${infer Caps}${Tail}` // tail exists, has capital characters
+        ? Caps extends CapitalChars
+          ? Tail extends CapitalLetters
+            ? `${Uppercase<Caps>}_${Uppercase<Tail>}` /* 'AB' */
+            : Tail extends `${CapitalLetters}${string}`
+            ? `${ToConstant<Caps>}_${ToConstant<Tail>}` /* first tail char is upper? 'ABcd' */
+            : `${ToConstant<Caps>}${ToConstant<Tail>}` /* 'AbCD','AbcD',  */ /* TODO: if tail is only numbers, append without underscore */
+          : never /* never reached, used for inference of caps */
+        : never
+      : Tail extends '' /* 'aB' 'abCD' 'ABCD' 'AB' */
+      ? S extends `${Head}${infer Caps}`
+        ? Caps extends CapitalChars
+          ? Head extends Lowercase<Head> /* 'abcD' */
+            ? Caps extends Numbers
+              ? // Head exists and is lowercase, tail does not, Caps is a number, we may be in a sub-select
+                // if head ends with number, don't split head an Caps, keep contiguous numbers together
+                Head extends `${string}${Numbers}`
+                ? never
+                : // head does not end in number, safe to split. 'abc2' -> 'ABC_2'
+                  `${Uppercase<ToConstant<Head>>}_${Caps}`
+              : `${Uppercase<ToConstant<Head>>}_${Uppercase<ToConstant<Caps>>}` /* 'abcD' 'abc25' */
+            : never /* stop union type forming */
+          : never
+        : never /* never reached, used for inference of caps */
+      : S extends `${Head}${infer Caps}${Tail}` /* 'abCd' 'ABCD' 'AbCd' 'ABcD' */
+      ? Caps extends CapitalChars
+        ? Head extends Lowercase<Head> /* is 'abCd' 'abCD' ? */
+          ? Tail extends CapitalLetters /* is 'abCD' where Caps = 'C' */
+            ? `${Uppercase<ToConstant<Head>>}_${Uppercase<ToConstant<Caps>>}_${Uppercase<Tail>}` /* aBCD Tail = 'D', Head = 'aB' */
+            : Tail extends `${CapitalLetters}${string}` /* is 'aBCd' where Caps = 'B' */
+            ? Head extends Numbers
+              ? never /* stop union type forming */
+              : Head extends `${string}${Numbers}`
+              ? never /* stop union type forming */
+              : `${Uppercase<Head>}_${Uppercase<ToConstant<Caps>>}_${ToConstant<Tail>}` /* 'aBCd' => `${'A'}_${Uppercase<'B'>}_${ToConstant<'Cd'>}` */
+            : `${Uppercase<ToConstant<Head>>}_${Uppercase<Caps>}${ToConstant<Tail>}` /* 'aBcD' where Caps = 'B' tail starts as lowercase */
+          : never
+        : never
+      : never
+    : Uppercase<S> /* 'abc'  */
+  : never;
+
+export type ObjectToConstant<T extends object | undefined | null> =
+  T extends undefined
+    ? undefined
+    : T extends null
+    ? null
+    : T extends Array<infer ArrayType>
+    ? ArrayType extends object
+      ? Array<ObjectToConstant<ArrayType>>
+      : Array<ArrayType>
+    : T extends Uint8Array
+    ? Uint8Array
+    : T extends Date
+    ? Date
+    : {
+        [K in keyof T as ToConstant<K>]: T[K] extends
+          | Array<infer ArrayType>
+          | undefined
+          | null
+          ? ArrayType extends object
+            ? Array<ObjectToConstant<ArrayType>>
+            : Array<ArrayType>
+          : T[K] extends object | undefined | null
+          ? ObjectToConstant<T[K]>
           : T[K];
       };
 

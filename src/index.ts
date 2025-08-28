@@ -5,6 +5,8 @@ export {
   toCamel,
   toPascal,
   objectToPascal,
+  toConstant,
+  objectToConstant,
 } from './caseConvert';
 
 export type {
@@ -14,4 +16,6 @@ export type {
   ToCamel,
   ToPascal,
   ObjectToPascal,
+  ToConstant,
+  ObjectToConstant,
 } from './caseConvert';
